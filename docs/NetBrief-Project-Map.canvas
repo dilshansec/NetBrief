@@ -1,0 +1,595 @@
+{
+  "nodes": [
+    {
+      "id": "g-overview",
+      "type": "group",
+      "x": -40,
+      "y": -80,
+      "width": 3660,
+      "height": 610,
+      "label": "01 · START HERE — PRODUCT & SCOPE",
+      "color": "5"
+    },
+    {
+      "id": "identity",
+      "type": "text",
+      "text": "# NetBrief\n## Wireshark captures → understandable network evidence\n\n**Local network traffic analysis application · v0.1 MVP**\n\nUpload a Wireshark `.pcap`, `.pcapng`, or `.cap` capture. Review traffic statistics, basic protocol metadata, a traffic timeline, and possible TCP SYN scan indicators. Export the report as JSON.\n\n**Repository:** https://github.com/dilshansec/NetBrief\n\nProduct name: **NetBrief**. The internal Python package remains `netsentry` so existing commands and imports keep working.\n\n**Read the board from top to bottom.** Arrows in section 02 show the actual runtime flow.",
+      "x": 0,
+      "y": 0,
+      "width": 840,
+      "height": 480,
+      "color": "5"
+    },
+    {
+      "id": "audience",
+      "type": "text",
+      "text": "# Why this project exists\n\n**Problem:** Packet captures contain many individual packets. A learner or analyst needs a quick overview before investigating individual exchanges in Wireshark.\n\n**Users:** Cybersecurity students, SOC analysts, network engineers, and forensic learners.\n\n**Typical workflow:**\n1. Capture authorized traffic with Wireshark.\n2. Save a PCAP/PCAPNG file.\n3. Upload it to NetBrief running locally.\n4. Review the overview and possible indicators.\n5. Validate findings in Wireshark and network context.\n6. Export JSON for further investigation.\n\nWireshark produces the input; it is not a runtime dependency.",
+      "x": 920,
+      "y": 0,
+      "width": 840,
+      "height": 480,
+      "color": "4"
+    },
+    {
+      "id": "legend",
+      "type": "text",
+      "text": "# How to interpret this design\n\n**GREEN · CURRENT** — implemented in the inspected repository.\n\n**RED · LIMITATION / RISK** — important current behavior or a reproduced defect.\n\n**PURPLE · PROPOSED** — recommended architecture or future work; not implemented.\n\n**ORANGE · NEXT** — prioritized v0.2 development tasks.\n\n**Verification baseline:** Five existing automated tests passed during the initial assessment. Common PCAPNG, upload rejection, and malformed-input behaviors also received focused checks.\n\nThe board distinguishes code inspection from testing. Windows startup and interactive browser behavior have not been verified here.",
+      "x": 1840,
+      "y": 0,
+      "width": 840,
+      "height": 480,
+      "color": "5"
+    },
+    {
+      "id": "scope",
+      "type": "text",
+      "text": "# Current scope & trust boundary\n\n**Runs locally:** Browser → localhost FastAPI → Python parser. The parser does not call a cloud analysis service.\n\n**Metadata analysis:** No payload display, TCP reassembly, decryption, or full Wireshark dissection.\n\n**Input is untrusted:** A capture can be malformed, truncated, incomplete, or deliberately misleading.\n\n**Investigation principle:** A possible scan is an indicator, not proof of malicious intent or successful compromise.\n\n**Deployment:** Loopback only. No authentication, request throttling, or isolated analysis worker.\n\n**Storage caveat:** No application history database; multipart uploads may use temporary disk files.",
+      "x": 2760,
+      "y": 0,
+      "width": 840,
+      "height": 480,
+      "color": "1"
+    },
+    {
+      "id": "g-flow",
+      "type": "group",
+      "x": -40,
+      "y": 600,
+      "width": 3660,
+      "height": 570,
+      "label": "02 · CURRENT RUNTIME DATA FLOW — LEFT → RIGHT",
+      "color": "4"
+    },
+    {
+      "id": "input",
+      "type": "text",
+      "text": "# 1 · Capture input\n**CURRENT**\n\nWireshark `.pcap` / `.pcapng` / `.cap`, or the bundled synthetic sample.\n\nUser selects a local file and clicks **Analyze capture**.\n\nThe demo first downloads `/sample`, then uses the same upload path.",
+      "x": 0,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "browser-upload",
+      "type": "text",
+      "text": "# 2 · Browser upload\n**static/index.html**\n\nJavaScript wraps the file in `FormData` and sends:\n\n`POST /api/analyze`\n\nMultipart field: `file`.\n\nShows progress/error text and disables analysis buttons while waiting.",
+      "x": 610,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "api",
+      "type": "text",
+      "text": "# 3 · API boundary\n**netsentry/main.py**\n\nCheck filename extension.\nRead at most **25 MiB + 1 byte**.\nClose the upload file.\nReject oversized uploads with **413**.\n\nCall `analyze(data, name)`.\nRecognized analysis errors become **400**.",
+      "x": 1220,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "reader",
+      "type": "text",
+      "text": "# 4 · Read & decode\n**netsentry/parser.py**\n\n`frames(blob)` yields timestamp, link type, captured bytes, original length.\n\n`decode(link, raw)` extracts addresses, protocol, ports, SYN/ACK flags.\n\nReject analysis above **300,000 packets**.",
+      "x": 1830,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "analysis",
+      "type": "text",
+      "text": "# 5 · Aggregate & detect\n**analyze()**\n\nCount protocols, addresses, destination ports, original bytes and minute buckets.\n\nCollect SYN candidates by source/destination pair.\n\nKeep first 500 decoded packet rows and build a report dictionary.",
+      "x": 2440,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "render",
+      "type": "text",
+      "text": "# 6 · Review & export\n**JSON → browser dashboard**\n\nRender metrics, bars, timeline, indicators and packet table.\n\nSearch filters returned packet rows locally.\n\n**Export JSON** creates `netbrief-report.json` in the browser.",
+      "x": 3050,
+      "y": 680,
+      "width": 550,
+      "height": 410,
+      "color": "4"
+    },
+    {
+      "id": "g-implementation",
+      "type": "group",
+      "x": -40,
+      "y": 1250,
+      "width": 3660,
+      "height": 800,
+      "label": "03 · CURRENT IMPLEMENTATION — FILES, API & PARSER",
+      "color": "4"
+    },
+    {
+      "id": "files",
+      "type": "text",
+      "text": "# Repository structure\n```text\nNetBrief/\n├── netsentry/\n│   ├── __init__.py\n│   ├── main.py          API + static responses\n│   └── parser.py        frames + decode + analysis\n├── static/\n│   └── index.html       entire frontend\n├── tests/\n│   └── test_app.py      5 existing tests\n├── samples/\n│   ├── demo_scan.pcap\n│   └── make_sample.py\n├── requirements.txt\n├── start_windows.bat\n└── README.md\n```\n\n**Runtime dependencies:** FastAPI, Uvicorn, python-multipart. Packet parsing uses the Python standard library.\n\n**Frontend:** HTML, CSS, vanilla JavaScript. No React, chart library, database, or build pipeline.",
+      "x": 0,
+      "y": 1330,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "endpoints",
+      "type": "text",
+      "text": "# API & local startup\n**CURRENT**\n\n`GET /` → dashboard HTML\n\n`GET /api/health` → status and version\n\n`POST /api/analyze` → capture report JSON\n\n`GET /sample` → bundled demo capture\n\n`GET /api/docs` → interactive FastAPI docs\n\n**Run from the repository root:**\n```bash\npython -m pip install -r requirements.txt\npython -m uvicorn netsentry.main:app --host 127.0.0.1 --port 8000\n```\nUse a virtual environment. Open `http://127.0.0.1:8000`.\n\nWindows shortcut: `start_windows.bat` creates/activates `.venv`, installs dependencies, and starts Uvicorn on loopback.",
+      "x": 920,
+      "y": 1330,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "formats",
+      "type": "text",
+      "text": "# Capture reader: frames()\n**CURRENT · support found in code**\n\n**PCAP:** Little/big endian, microsecond/nanosecond magic variants. Reads record timestamps, captured lengths, and original lengths.\n\n**PCAPNG:** Section headers, interface descriptions, enhanced packets, simple packets, and selected legacy packet blocks.\n\nInterface timestamp resolution and offset options are recognized. Simple packet blocks have no timestamp.\n\n**Link types:** Ethernet, Linux cooked v1, raw IP, raw IPv4/IPv6.\n\n**Validation present:** Signature, selected block sizes/trailers, and capture-record bounds.\n\n**Not full format conformance:** Some malformed/unsupported records are skipped or incompletely validated. Support is not equivalent to all Wireshark capture formats.\n\nCommon little-endian PCAPNG was exercised; every listed variant has not been tested.",
+      "x": 1840,
+      "y": 1330,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "decoding",
+      "type": "text",
+      "text": "# Packet decoder: decode()\n**CURRENT**\n\nEthernet header → up to two VLAN tags → IPv4 / IPv6 / ARP classification.\n\nIPv4: source/destination, protocol, header length, noninitial-fragment detection.\n\nIPv6: source/destination, selected extension headers with a bounded loop, noninitial-fragment detection.\n\nTCP/UDP: basic source/destination ports.\nTCP: SYN and ACK flags when available.\nICMP / ICMPv6: protocol labels.\nARP: Ethernet protocol label, no address analysis.\n\n**DNS means UDP port 53 only.** No DNS query parsing or validation. TCP DNS is labeled TCP.\n\nNo MAC analysis, transport reassembly, handshake state, retransmission tracking, HTTP metadata, or TLS metadata.",
+      "x": 2760,
+      "y": 1330,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "g-results",
+      "type": "group",
+      "x": -40,
+      "y": 2130,
+      "width": 3660,
+      "height": 800,
+      "label": "04 · CURRENT RESULTS — WHAT THE ANALYST RECEIVES",
+      "color": "4"
+    },
+    {
+      "id": "schema",
+      "type": "text",
+      "text": "# Report contract\n**CURRENT · returned JSON keys**\n\n`filename`\n\n`summary` → packets, bytes, duration_seconds, start_utc, end_utc, unique_sources, unique_destinations, parse_errors\n\n`protocols` → protocol label → packet count\n\n`top_sources`, `top_destinations`, `top_ports` → top 12 entries each\n\n`timeline` → earliest 500 populated minute buckets\n\n`alerts` → first 100 generated findings\n\n`packets` → first 500 decoded packet rows\n\n`limitations` → static explanatory strings\n\n**bytes = sum of original packet lengths.** It is not the uploaded file size or necessarily the number of captured bytes.",
+      "x": 0,
+      "y": 2210,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "dashboard",
+      "type": "text",
+      "text": "# Dashboard & packet explorer\n**CURRENT · static/index.html**\n\n**Metric cards:** Packet count, capture bytes, source IP count, indicator count.\n\n**Charts:** Protocol bars, top source IP bars, destination-port bars, minute timeline.\n\n**Investigation:** Basic indicator panels and limitations.\n\n**Table:** Packet number, UTC time, addresses, protocol, ports, original length.\n\nSearch is a case-insensitive substring match across returned row values. It searches only the first 500 rows and is not a Wireshark filter language.\n\nAPI-only data includes top destination IPs, unique destination count, start/end times, and parse-error count.\n\nDynamic values are escaped or assigned as text. JSON export is generated in the browser.",
+      "x": 920,
+      "y": 2210,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "syn-rule",
+      "type": "text",
+      "text": "# Possible TCP SYN port scan\n**CURRENT · one fixed heuristic**\n\nSelect packets classified as TCP with **SYN=1, ACK=0**, a source address, and destination port.\n\nGroup by `(source IP, destination IP)`.\nCollect distinct destination ports and count SYN packets.\n\nTrigger when **15+ distinct ports** and the entire group's first-to-last interval is **≤60 seconds**, or timestamps are unavailable.\n\nSeverity: **medium**. Output contains type, severity, source, destination, evidence text, and a generic caution.\n\nThe time interval covers the whole capture group; this is **not a rolling 60-second window**.\n\nNo response analysis, successful-connection inference, confidence score, packet references, rule ID, or configurable thresholds.",
+      "x": 1840,
+      "y": 2210,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "sample-tests",
+      "type": "text",
+      "text": "# Sample & verification baseline\n**CURRENT**\n\n`samples/make_sample.py` builds a synthetic Ethernet/IPv4/TCP capture using documentation-only IP ranges.\n\n25 SYN packets, one per second:\n`192.0.2.10 → 198.51.100.20`\nDestination ports **20–44**.\n\nExpected result: 25 TCP packets, 24-second duration, one possible SYN scan indicator. This is synthetic traffic, not a confirmed incident.\n\n**Existing tests: 5 passed**\nHealth; demo analysis; demo upload; invalid capture; dashboard response.\n\n```bash\npython -m pip install pytest httpx\npython -m pytest -q\n```\n\nMissing coverage includes most format variants, malformed headers, fragments, resource limits, scan windows, and browser interactions.",
+      "x": 2760,
+      "y": 2210,
+      "width": 840,
+      "height": 640,
+      "color": "4"
+    },
+    {
+      "id": "g-risks",
+      "type": "group",
+      "x": -40,
+      "y": 3010,
+      "width": 3660,
+      "height": 760,
+      "label": "05 · CURRENT LIMITATIONS — FIX BEFORE EXPANDING CLAIMS",
+      "color": "1"
+    },
+    {
+      "id": "correctness",
+      "type": "text",
+      "text": "# Parsing correctness risks\n**REPRODUCED during assessment**\n\n1. An IPv4 packet declaring only its IP header was still decoded as TCP when extra bytes followed it. Declared network/transport lengths do not consistently bound decoding.\n\n2. An undersized PCAPNG enhanced-packet block was silently skipped. The report returned zero packets and `parse_errors: 0`.\n\n**Other limitations found in code**\nMany short headers return OTHER without warnings. Unsupported and malformed packets are not consistently distinguished. Fragment and extension-header support is partial.\n\n**Impact:** Misleading protocol counts, ports, flags, and detection evidence.\n\n**Needed:** Strict bounds, explicit malformed/truncated/unsupported statuses, and report-level quality warnings.",
+      "x": 0,
+      "y": 3090,
+      "width": 840,
+      "height": 600,
+      "color": "1"
+    },
+    {
+      "id": "scan-risk",
+      "type": "text",
+      "text": "# Detection & evidence risks\n**REPRODUCED during assessment**\n\n25 distinct-port SYNs over 24 seconds trigger an alert. Add one SYN at 120 seconds and the alert disappears because the full group interval exceeds 60 seconds.\n\n**Needed:** Rolling time windows that retain evidence for each detected interval.\n\n**Other limitations**\nMissing timestamps can satisfy the rule without a verified time interval. Normal authorized scanning can also trigger it. Capture gaps and asymmetric visibility can hide responses.\n\nCurrent findings do not list affected ports, first/last timestamps, packet numbers, specific false-positive explanations, or investigation actions.\n\nAbsence of an alert does not establish safety. A scan indicator never proves compromise.",
+      "x": 920,
+      "y": 3090,
+      "width": 840,
+      "height": 600,
+      "color": "1"
+    },
+    {
+      "id": "resource-risk",
+      "type": "text",
+      "text": "# Upload & performance risks\n**CURRENT behavior**\n\nMultipart parsing occurs before the endpoint's read limit. The framework may spool uploads to temporary disk, so the current in-memory-only claim is inaccurate.\n\nThe entire accepted capture is read into bytes. Analysis is synchronous inside an async endpoint and can block that worker's event loop.\n\nAddress counters, scan groups, port sets, and timeline buckets grow during processing. Returned-row limits do not bound all intermediate state.\n\nNo explicit analysis timeout, concurrency policy, or isolated worker.\n\n**Needed:** Incoming-body limits before multipart storage, truthful storage documentation, controlled analysis execution, and a measured memory budget.",
+      "x": 1840,
+      "y": 3090,
+      "width": 840,
+      "height": 600,
+      "color": "1"
+    },
+    {
+      "id": "completeness",
+      "type": "text",
+      "text": "# Deployment & completeness limits\n**CURRENT**\n\nLocal loopback deployment only. No authentication, throttling, or secure multi-user deployment model.\n\nOnly 500 packet rows, 500 timeline buckets and 100 alerts are returned. Total omitted counts are not provided. This can hide later activity from the user.\n\nNo persistent cases or searchable full-capture store. Browser holds the report; exported files can contain sensitive network metadata.\n\nBroad dependency ranges and limited regression coverage reduce reproducibility.\n\n**Needed:** Explicit completeness metadata, visible quality warnings, clearer length labels, reproducible development dependencies, and Windows verification.",
+      "x": 2760,
+      "y": 3090,
+      "width": 840,
+      "height": 600,
+      "color": "1"
+    },
+    {
+      "id": "g-target",
+      "type": "group",
+      "x": -40,
+      "y": 3850,
+      "width": 3660,
+      "height": 800,
+      "label": "06 · PROPOSED ARCHITECTURE — INCREMENTAL, NOT IMPLEMENTED",
+      "color": "6"
+    },
+    {
+      "id": "target-reader",
+      "type": "text",
+      "text": "# Capture reader + decoder\n**PROPOSED**\n\n`capture/reader.py`\nValidate containers and iterate frame records. Preserve interface metadata, timestamp precision, captured/original lengths, and warnings.\n\n`capture/decoder.py`\nDecode only within validated boundaries. Distinguish valid, truncated, malformed, and unsupported packets.\n\n**Internal packet record**\nPacket number, timestamp, addresses, protocol, ports, flags, lengths, and decoding status.\n\nStream records to consumers instead of retaining every payload. Use bounded state and explicit quality reporting.\n\nAn optional future TShark adapter should produce the same internal record contract.",
+      "x": 0,
+      "y": 3930,
+      "width": 840,
+      "height": 640,
+      "color": "6"
+    },
+    {
+      "id": "target-analysis",
+      "type": "text",
+      "text": "# Statistics + detection rules\n**PROPOSED**\n\n`analysis/statistics.py`\nProtocols, endpoints, conversations, sizes, rates, timelines, and completeness counters.\n\n`detection/syn_scan.py`\nRolling-window SYN heuristic with configurable thresholds and evidence collection.\n\nEach finding should include:\nRule ID/version, name, heuristic/signature category, severity, confidence, conditions, source/destination, affected ports, first/last times, packet references, reasoning, limitations, false-positive explanations, and next steps.\n\nMap to MITRE ATT&CK only where evidence supports it. Do not infer attack success from incomplete packet metadata.",
+      "x": 920,
+      "y": 3930,
+      "width": 840,
+      "height": 640,
+      "color": "6"
+    },
+    {
+      "id": "target-api",
+      "type": "text",
+      "text": "# Stable reports + API boundary\n**PROPOSED**\n\n`reports/models.py`\nTyped report schema with a schema version, capture-quality warnings, completeness metadata, and structured findings.\n\n`reports/export.py`\nJSON first, then CSV. PDF later when report content is stable.\n\n`api/routes.py`\nBound uploads, handle errors, control analysis execution, and return reports.\n\nPreserve existing endpoints and JSON keys. Prefer additive fields; document changes before changing meanings.\n\nKeep the existing frontend initially. Define a bounded result-retention strategy before offering server-side pagination or historical investigations.",
+      "x": 1840,
+      "y": 3930,
+      "width": 840,
+      "height": 640,
+      "color": "6"
+    },
+    {
+      "id": "target-ui",
+      "type": "text",
+      "text": "# Analyst experience + deployment\n**PROPOSED**\n\nExpose existing destination statistics and capture-quality warnings first.\n\nAdd finding details with packet references, timeline context, thresholds, confidence, and alternative explanations.\n\nMake omitted results obvious. Provide deliberate access beyond the first 500 packets.\n\nRetain the local Python/FastAPI app and existing HTML/JS until a larger UI justifies migration.\n\nReact, Tailwind, Recharts, Redis/Celery, PostgreSQL, and cloud hosting are options—not v0.2 requirements.\n\nBefore shared hosting: define authentication, access control, retention, isolation, resource quotas, and deletion policy.",
+      "x": 2760,
+      "y": 3930,
+      "width": 840,
+      "height": 640,
+      "color": "6"
+    },
+    {
+      "id": "g-next",
+      "type": "group",
+      "x": -40,
+      "y": 4730,
+      "width": 3660,
+      "height": 1330,
+      "label": "07 · v0.2 DELIVERY PLAN — PRIORITY ORDER, NOT IMPLEMENTED",
+      "color": "2"
+    },
+    {
+      "id": "p1",
+      "type": "text",
+      "text": "# P1 · Regression foundation\n\nCreate controlled captures for endian/timestamp variants, PCAPNG interfaces, VLANs, IPv4/IPv6 fragments, malformed records, missing timestamps, and scan boundaries.\n\n**Done when:** Existing five tests still pass; known defects have focused failing tests that can guide fixes.\n\nKeep fixtures small and deterministic. Record what has and has not been tested.",
+      "x": 0,
+      "y": 4810,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p2",
+      "type": "text",
+      "text": "# P2 · Parser correctness\n\nValidate block/header structure and declared IP/transport lengths. Report malformed, truncated, and unsupported records explicitly.\n\n**Done when:** Bytes outside declared packet boundaries cannot become transport evidence; malformed PCAPNG blocks cannot silently produce a clean report.\n\nPreserve safe partial analysis only with visible warnings.",
+      "x": 920,
+      "y": 4810,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p3",
+      "type": "text",
+      "text": "# P3 · Resource controls\n\nEnforce incoming-body limits before multipart storage. Document temporary files. Bound analysis concurrency, duration, and intermediate state.\n\n**Done when:** Oversized requests are bounded at ingestion, concurrent analysis does not freeze health responses, and resource behavior is measured.\n\nChoose thread/process execution based on measured CPU and isolation needs.",
+      "x": 1840,
+      "y": 4810,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p4",
+      "type": "text",
+      "text": "# P4 · Reliable SYN windows\n\nSeparate the scan rule from aggregation. Use configurable rolling time windows and retain packet/port evidence per finding.\n\n**Done when:** A scan burst still triggers after a later SYN; time boundaries, duplicate ports, retransmissions, missing timestamps, and out-of-order records have defined behavior and tests.",
+      "x": 2760,
+      "y": 4810,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p5",
+      "type": "text",
+      "text": "# P5 · Structured findings\n\nAdd rule IDs, confidence, observed intervals, affected ports, packet references, reasoning, false positives, and recommended investigation steps.\n\n**Done when:** Every finding can be traced back to the capture and explains why the threshold fired without asserting compromise.\n\nRetain existing alert fields for compatibility.",
+      "x": 0,
+      "y": 5390,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p6",
+      "type": "text",
+      "text": "# P6 · Honest report completeness\n\nSeparate uploaded, captured, and original byte counts. Expose quality warnings and omitted packet, alert, and timeline counts.\n\n**Done when:** Users can tell whether statistics and views are complete, partial, or truncated. Existing field meanings are preserved or explicitly versioned.",
+      "x": 920,
+      "y": 5390,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p7",
+      "type": "text",
+      "text": "# P7 · Conversations & exploration\n\nAdd IP/port conversations and better traffic summaries. Define bounded retention before implementing pagination and full-capture filtering.\n\n**Done when:** Analysts can investigate beyond the first 500 rows with clear storage and memory limits.\n\nDo not present substring matching as Wireshark display filters.",
+      "x": 1840,
+      "y": 5390,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "p8",
+      "type": "text",
+      "text": "# P8 · Dashboard & CSV\n\nShow destination statistics, capture-quality indicators, finding evidence, and completeness notices. Export CSV alongside JSON.\n\n**Done when:** Dashboard and exports reflect the same report contract and have meaningful regression checks.\n\nReassess optional TShark integration only after parser contracts and resource controls are stable.",
+      "x": 2760,
+      "y": 5390,
+      "width": 840,
+      "height": 500,
+      "color": "2"
+    },
+    {
+      "id": "g-roadmap",
+      "type": "group",
+      "x": -40,
+      "y": 6140,
+      "width": 3660,
+      "height": 670,
+      "label": "08 · LONG-TERM ROADMAP — OPTIONS, NOT PROMISED FEATURES",
+      "color": "6"
+    },
+    {
+      "id": "road-analysis",
+      "type": "text",
+      "text": "# v0.3 · Detection expansion\n**FUTURE**\n\nAfter reliable evidence contracts, consider TCP connect/UDP scans, ICMP discovery, SYN floods, unusual rates, ARP anomalies, DNS anomalies/tunneling, and periodic outbound patterns.\n\nEach rule needs explicit conditions, configurable thresholds, controlled fixtures, confidence, and false-positive guidance.\n\nAuthentication/brute-force conclusions require visible authentication evidence. Port numbers alone do not establish those attacks.",
+      "x": 0,
+      "y": 6220,
+      "width": 840,
+      "height": 510,
+      "color": "6"
+    },
+    {
+      "id": "road-ui",
+      "type": "text",
+      "text": "# v0.4 · Investigation workspace\n**FUTURE**\n\nRicher charts, interactive timeline, packet evidence views, alert details, investigation notes, and more complete reports.\n\nPotential navigation: Dashboard, Upload, Packet Explorer, Protocols, IPs, Timeline, Detections, Reports, Settings.\n\nOnly expose implemented sections. Introduce a React-based frontend if complexity warrants it, while preserving API compatibility.\n\nPDF reports follow stable JSON and CSV content.",
+      "x": 920,
+      "y": 6220,
+      "width": 840,
+      "height": 510,
+      "color": "6"
+    },
+    {
+      "id": "road-integrations",
+      "type": "text",
+      "text": "# v0.5 · Optional integrations\n**FUTURE**\n\n**TShark:** Rich protocol metadata; use argument lists, no shell interpolation, bounded output/runtime, and controlled process execution.\n\n**Zeek:** Connection and application metadata.\n\n**Suricata:** Signature-based findings, kept distinct from heuristics.\n\nThreat intelligence and AI explanations are optional enrichment with explicit privacy boundaries.\n\nDo not integrate all engines at once.",
+      "x": 1840,
+      "y": 6220,
+      "width": 840,
+      "height": 510,
+      "color": "6"
+    },
+    {
+      "id": "road-stable",
+      "type": "text",
+      "text": "# v1.0 · Stable local platform\n**FUTURE TARGET**\n\nReliable capture handling, trustworthy evidence, clear investigation workflows, bounded resource use, documented reports, and Windows-compatible local operation.\n\nOptional local history/case management requires opt-in persistence, retention and deletion controls.\n\nAuthorized live capture and private/cloud deployment require separate design and security work.\n\n**Success measure:** An analyst can understand what was observed, why it matters, what evidence supports it, and what remains uncertain.",
+      "x": 2760,
+      "y": 6220,
+      "width": 840,
+      "height": 510,
+      "color": "6"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e000",
+      "fromNode": "input",
+      "fromSide": "right",
+      "toNode": "browser-upload",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "4"
+    },
+    {
+      "id": "e001",
+      "fromNode": "browser-upload",
+      "fromSide": "right",
+      "toNode": "api",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "4"
+    },
+    {
+      "id": "e002",
+      "fromNode": "api",
+      "fromSide": "right",
+      "toNode": "reader",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "4"
+    },
+    {
+      "id": "e003",
+      "fromNode": "reader",
+      "fromSide": "right",
+      "toNode": "analysis",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "4"
+    },
+    {
+      "id": "e004",
+      "fromNode": "analysis",
+      "fromSide": "right",
+      "toNode": "render",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "4"
+    },
+    {
+      "id": "e005",
+      "fromNode": "target-reader",
+      "fromSide": "right",
+      "toNode": "target-analysis",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "6",
+      "label": "packet records"
+    },
+    {
+      "id": "e006",
+      "fromNode": "target-analysis",
+      "fromSide": "right",
+      "toNode": "target-api",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "6",
+      "label": "statistics + findings"
+    },
+    {
+      "id": "e007",
+      "fromNode": "target-api",
+      "fromSide": "right",
+      "toNode": "target-ui",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "6",
+      "label": "stable report contract"
+    },
+    {
+      "id": "e008",
+      "fromNode": "p1",
+      "fromSide": "right",
+      "toNode": "p2",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    },
+    {
+      "id": "e009",
+      "fromNode": "p2",
+      "fromSide": "right",
+      "toNode": "p3",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    },
+    {
+      "id": "e010",
+      "fromNode": "p3",
+      "fromSide": "right",
+      "toNode": "p4",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    },
+    {
+      "id": "e011",
+      "fromNode": "p5",
+      "fromSide": "right",
+      "toNode": "p6",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    },
+    {
+      "id": "e012",
+      "fromNode": "p6",
+      "fromSide": "right",
+      "toNode": "p7",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    },
+    {
+      "id": "e013",
+      "fromNode": "p7",
+      "fromSide": "right",
+      "toNode": "p8",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "color": "2"
+    }
+  ]
+}
