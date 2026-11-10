@@ -1,24 +1,40 @@
-# NetBrief v0.1 — Local PCAP Analyzer
+# NetBrief
 
-A locally hosted, extensible packet-capture analyzer for personal defensive-security study.
+**Turn Wireshark capture files into clear network traffic summaries.**
 
-## Features
+NetBrief is a local web application that analyzes uploaded PCAP and PCAPNG files. It summarizes network activity, visualizes protocol usage, and highlights possible TCP SYN scan activity to support security investigations.
 
-- Upload `.pcap`, `.pcapng` or `.cap` (max **25 MB**)
-- Pure-Python, dependency-free **capture parsing** (no Wireshark/TShark required)
-- Ethernet, VLAN, IPv4, IPv6, basic TCP/UDP/ICMP/ARP metadata; basic DNS port recognition
-- Protocol breakdown, top source/destination IPs, top destination ports, minute traffic histogram
-- First 500 packets in searchable table
-- **Possible TCP SYN port scan** heuristic: 15+ distinct destination ports, same src/dst, within 60 sec where timestamps exist
-- Export a JSON report; all data processed in memory and not persisted
-- FastAPI backend and self-contained HTML/JS frontend
-- Synthetic example capture with documentation-address ranges
+Built as a personal cybersecurity project for learning network analysis and digital forensics. **Current version: v0.1 MVP.**
 
-## Quick start: Windows 10/11 (PowerShell)
+## What you can do
 
-Install **Python 3.10+** from https://www.python.org/downloads/ and enable "Add python.exe to PATH".
+- Upload `.pcap`, `.pcapng`, or `.cap` files up to **25 MiB**.
+- Review packet counts, traffic volume, capture duration, and source IP counts.
+- Explore protocol distribution, top source IPs, and destination ports.
+- View packet activity on a minute-by-minute timeline.
+- Search the first **500 packets** by IP, protocol, port, or packet number.
+- Review possible TCP SYN scan indicators.
+- Download the analysis as a **JSON report**.
+- Try a bundled synthetic capture without uploading your own file.
 
-Extract the ZIP, open PowerShell in the `NetBrief` directory and execute:
+## How it works
+
+**Wireshark capture → Upload → Analysis → Dashboard → JSON report**
+
+Save a capture in Wireshark, upload it to NetBrief, and review the results in your browser. NetBrief runs on your computer and does not require Wireshark or TShark to be installed.
+
+## Getting started
+
+You need **Python 3.10 or later**. Download this repository as a ZIP and extract it, or clone it:
+
+```bash
+git clone https://github.com/dilshansec/NetBrief.git
+cd NetBrief
+```
+
+### Windows
+
+Open PowerShell in the project folder and run:
 
 ```powershell
 py -3 -m venv .venv
@@ -26,11 +42,9 @@ py -3 -m venv .venv
 .venv\Scripts\python.exe -m uvicorn netsentry.main:app --host 127.0.0.1 --port 8000
 ```
 
-Then visit **http://127.0.0.1:8000**. Or double-click `start_windows.bat`.
+Alternatively, double-click **`start_windows.bat`** to set up and start the application.
 
-If PowerShell activation is blocked, no changes are needed: commands above use the venv executable directly.
-
-## Linux / macOS
+### Linux / macOS
 
 ```bash
 python3 -m venv .venv
@@ -38,47 +52,53 @@ python3 -m venv .venv
 .venv/bin/python -m uvicorn netsentry.main:app --host 127.0.0.1 --port 8000
 ```
 
-## Try the included sample
+Open **http://127.0.0.1:8000** in your browser. Click **Load sample capture** for a demo, or select your capture and click **Analyze capture**. Press `Ctrl+C` in the terminal to stop the server.
 
-Click **Load sample capture**. It creates a medium-severity *possible SYN scan* alert from 25 artificial TCP SYN packets from `192.0.2.10` to 25 destination ports on `198.51.100.20`.
+The internal Python package is still named `netsentry`, so the startup commands use `netsentry.main:app`.
 
-The sample is simulated, not captured from a real network. Or import your own capture (Wireshark > File > Save As).
+## Technology and structure
 
-## Run tests
+- **Backend:** Python, FastAPI, Uvicorn
+- **Frontend:** HTML, CSS, JavaScript
+- **Capture parser:** Python standard library
 
-```bash
-.venv/Scripts/python.exe -m pip install pytest httpx  # Windows; use .venv/bin/python on Linux
-.venv/Scripts/python.exe -m pytest -q
+```text
+NetBrief/
+├── netsentry/
+│   ├── main.py          # API and dashboard delivery
+│   └── parser.py        # Capture parsing, statistics, scan heuristic
+├── static/index.html   # Dashboard and packet explorer
+├── samples/            # Synthetic capture and generator
+├── tests/test_app.py   # Parser and API tests
+├── requirements.txt
+└── start_windows.bat
 ```
 
-## API
+## Tests and API
 
-- `GET /` — dashboard
-- `GET /api/health` — health check
-- `POST /api/analyze` — multipart `file` field, returns JSON summary
-- `GET /sample` — synthetic demo capture
-- `GET /api/docs` — interactive FastAPI docs
+With the virtual environment created, run these commands on Windows:
 
-## Security and scope
+```powershell
+.venv\Scripts\python.exe -m pip install pytest httpx
+.venv\Scripts\python.exe -m pytest -q
+```
 
-**Local-only:** bind to `127.0.0.1`, not `0.0.0.0`, because this MVP lacks authentication, request throttling and process isolation. The server does not store uploaded captures or logs, though the browser holds analysis results until refreshed. JSON reports are saved only when the user explicitly exports one.
+On Linux/macOS, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
 
-Metadata is **not** the same as full Wireshark decoding: no payload display, no TCP reassembly, no application-layer decoding, no live capture, no IDS signature matching. Heuristic alerts can be false positives and their absence does not establish safety.
+Interactive API documentation is available at **http://127.0.0.1:8000/api/docs** while the server is running.
 
-PCAPNG support is focused on common section/interface/enhanced-packet blocks and link types Ethernet, Linux cooked v1 and raw IP. Other link-layer formats and advanced protocol dissectors are out of scope. Unsupported packets count under OTHER, and parsing records may be partial.
+## Current limitations
 
-The 25-MB upload limit and 300,000-packet limit are safeguards, not a sandbox for hostile files. Parse only captures you own or have permission to inspect. Do not make this version internet-accessible.
+- This version is intended for **local use**. Keep it bound to `127.0.0.1`; it has no authentication or request throttling.
+- Parsing covers basic metadata and common capture formats. It does not provide full Wireshark decoding, payload inspection, TCP reassembly, or live capture.
+- DNS recognition is based on UDP port 53; DNS queries are not decoded.
+- SYN scan detection is experimental. It checks for 15 or more distinct destination ports per source/destination pair over the pair's full observed interval of up to 60 seconds, or without a time check if timestamps are missing. It does not use a rolling window and can miss scan bursts.
+- Indicators require investigation: they do not prove an attack or successful compromise. No indicators does not mean a capture is safe.
+- Processing is limited to **300,000 packets**. Reports include at most 500 packet rows, 500 populated timeline buckets, and 100 indicators.
+- NetBrief does not maintain a capture history, but uploads may use temporary disk storage. Exported reports can contain sensitive network metadata.
 
-## How to extend
+## Next steps
 
-- `netsentry/parser.py`: core parsing, stats, heuristic logic — refactor into pluggable `analyzers/` and `detectors/` packages as the feature set grows.
-- `netsentry/main.py`: API endpoints — add routers for results, rules and history.
-- `static/index.html`: dashboard — later swap for React without changing JSON API contracts.
-- Add TShark for richer protocol decoding, Zeek for connection logs, Suricata for signatures, PostgreSQL for history, background workers for large files, and secure isolated workers before public deployment.
+Planned improvements include stronger capture validation, resource controls, reliable scan time windows, findings with packet evidence, conversation analysis, and CSV export. These features are not yet implemented.
 
-## Suggested v0.2 milestones
-
-1. Separate scan detection into versioned rules with confidence scores and timestamps.
-2. Add IPv4/IPv6 fragmentation-aware parsing, DNS query parser and packet search pagination.
-3. Integrate optional TShark subprocess with strict resource bounds.
-4. Add case management and local SQLite results history (opt-in, with retention/deletion settings).
+Analyze only traffic you own or have permission to inspect.
