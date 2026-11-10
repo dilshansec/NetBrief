@@ -1,4 +1,4 @@
-# NetSentry v0.1 — Local PCAP Analyzer
+# NetBrief v0.1 — Local PCAP Analyzer
 
 A locally hosted, extensible packet-capture analyzer for personal defensive-security study.
 
@@ -18,7 +18,7 @@ A locally hosted, extensible packet-capture analyzer for personal defensive-secu
 
 Install **Python 3.10+** from https://www.python.org/downloads/ and enable "Add python.exe to PATH".
 
-Extract the ZIP, open PowerShell in the `NetSentry-MVP` directory and execute:
+Extract the ZIP, open PowerShell in the `NetBrief` directory and execute:
 
 ```powershell
 py -3 -m venv .venv

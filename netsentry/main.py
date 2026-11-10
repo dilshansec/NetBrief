@@ -5,7 +5,7 @@ from netsentry.parser import CaptureError, analyze
 
 ROOT=Path(__file__).resolve().parents[1]
 MAX_UPLOAD=25*1024*1024
-app=FastAPI(title='NetSentry MVP',version='0.1.0',docs_url='/api/docs')
+app=FastAPI(title='NetBrief MVP',version='0.1.0',docs_url='/api/docs')
 
 @app.get('/')
 def home():

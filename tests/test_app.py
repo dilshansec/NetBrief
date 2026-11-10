@@ -28,4 +28,4 @@ def test_invalid():
     assert res.status_code==400
 
 def test_index():
-    assert 'NetSentry' in client.get('/').text
+    assert 'NetBrief' in client.get('/').text
