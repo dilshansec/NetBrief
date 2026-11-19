@@ -5,11 +5,23 @@ NetBrief analyzes saved Wireshark capture files (`.pcap` and `.pcapng`) on your 
 ## What it does
 
 - Summarizes IP addresses, communications, protocols and packet counts.
-- Checks for nine types of suspicious behavior, including scanning, floods, ARP conflicts, DNS tunneling indicators and unusual outbound transfers.
+- Checks for the nine suspicious activity types listed below.
 - Shows severity, explanations and evidence packet numbers to review in Wireshark.
 - Exports findings as JSON, CSV or a printable report.
 
 It analyzes uploaded captures, not live traffic. Findings are indicators to investigate, not proof of an attack.
+
+## Suspicious activities it detects
+
+- Port scanning
+- Host discovery
+- SYN flood indicators
+- Repeated authentication-service connections (possible brute force)
+- Conflicting ARP address claims (possible ARP spoofing)
+- DNS tunneling indicators
+- ICMP flood indicators
+- Large outbound transfers (possible data exfiltration)
+- Periodic connections (possible beaconing)
 
 ## How to use it
 
