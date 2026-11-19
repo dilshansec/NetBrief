@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const f=require('../static/filters.js');
+const base={ids:null,ranges:[],protocol:'',connection:'',ip:'',port:'',flag:'',query:''};
+const rows=[{no:345,protocol:'TCP',connection_id:0,src:'192.0.2.1',dst:'198.51.100.1',sport:5000,dport:80,flags:['SYN']},{no:346,protocol:'UDP',connection_id:null,src:'192.0.2.2',dst:'198.51.100.1',sport:5001,dport:53,flags:[]},{no:349,protocol:'TCP',connection_id:0,src:'198.51.100.1',dst:'192.0.2.1',sport:80,dport:5000,flags:['SYN','ACK']}];
+const select=fields=>rows.filter(p=>f.matches(p,{...base,...fields})).map(p=>p.no);
+assert.deepEqual(select({ids:new Set([345,349])}),[345,349]);
+assert.deepEqual(select({ranges:f.parseNumbers('345-346, 349')}),[345,346,349]);
+assert.deepEqual(select({protocol:'TCP',port:'80',ip:'192.0.2.1',flag:'ACK',connection:'0'}),[349]);
+assert.deepEqual(select({ip:'192.0.2'}),[]);
+assert.deepEqual(select({port:'8'}),[]);
+assert.deepEqual(select({protocol:'UDP',connection:'0'}),[]);
+assert.equal(f.label([345,347,346]),'#345-347');
+assert.equal(f.label([345,349,352]),'#345, #349, #352');
+assert.equal(f.wire(f.rangesFor([345,349])),'frame.number == 345 || frame.number == 349');
+assert.throws(()=>f.parseNumbers('8-3'));
+assert.throws(()=>f.parseNumbers('0'));
+assert.throws(()=>f.parseNumbers('abc'));
+console.log('12 packet-filter assertions passed');

@@ -6,3 +6,9 @@ __pycache__/
 *.pcap
 *.pcapng
 !samples/*.pcap
+
+*.log
+!/.env.example
+
+.publish/
+workspace-*.png

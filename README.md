@@ -1,104 +1,82 @@
-# NetBrief
+# NetBrief 0.3 — Network Investigation
 
-**Turn Wireshark capture files into clear network traffic summaries.**
+A local-first, evidence-led PCAP investigation workspace for a SOC student portfolio. Retains the original FastAPI, pure-Python parser and buildless JavaScript architecture. It analyzes **recorded captures only**; it never scans, transmits captured packets, executes extracted content or contacts captured addresses.
 
-NetBrief is a local web application that analyzes uploaded PCAP and PCAPNG files. It summarizes network activity, visualizes protocol usage, and highlights possible TCP SYN scan activity to support security investigations.
+The application and Python package use the NetSentry name. This is the updated implementation of the NetBrief repository.
 
-Built as a personal cybersecurity project for learning network analysis and digital forensics. **Current version: v0.1 MVP.**
+## Run locally (Windows)
 
-## What you can do
-
-- Upload `.pcap`, `.pcapng`, or `.cap` files up to **25 MiB**.
-- Review packet counts, traffic volume, capture duration, and source IP counts.
-- Explore protocol distribution, top source IPs, and destination ports.
-- View packet activity on a minute-by-minute timeline.
-- Search the first **500 packets** by IP, protocol, port, or packet number.
-- Review possible TCP SYN scan indicators.
-- Download the analysis as a **JSON report**.
-- Try a bundled synthetic capture without uploading your own file.
-
-## How it works
-
-**Wireshark capture → Upload → Analysis → Dashboard → JSON report**
-
-Save a capture in Wireshark, upload it to NetBrief, and review the results in your browser. NetBrief runs on your computer and does not require Wireshark or TShark to be installed.
-
-## Getting started
-
-You need **Python 3.10 or later**. Download this repository as a ZIP and extract it, or clone it:
-
-```bash
-git clone https://github.com/dilshansec/NetBrief.git
-cd NetBrief
-```
-
-### Windows
-
-Open PowerShell in the project folder and run:
+Clone [dilshansec/NetBrief](https://github.com/dilshansec/NetBrief) and open its folder before running the commands below.
 
 ```powershell
 py -3 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.lock
 .venv\Scripts\python.exe -m uvicorn netsentry.main:app --host 127.0.0.1 --port 8000
 ```
 
-Alternatively, double-click **`start_windows.bat`** to set up and start the application.
+Open **http://127.0.0.1:8000**. `start_windows.bat` performs setup and starts the app. Python 3.10+; tested with Python 3.12. No Node build, database, TShark, Scapy or external frontend CDN is needed.
 
-### Linux / macOS
+On Linux/macOS substitute `.venv/bin/python` for `.venv\Scripts\python.exe`. Settings in `.env.example` are examples: export them into the process environment; the application does not automatically load a `.env` file.
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m uvicorn netsentry.main:app --host 127.0.0.1 --port 8000
-```
+## What is implemented
 
-Open **http://127.0.0.1:8000** in your browser. Click **Load sample capture** for a demo, or select your capture and click **Analyze capture**. Press `Ctrl+C` in the terminal to stop the server.
+- PCAP/PCAPNG, Ethernet/VLAN, raw IP and Linux cooked v1; IPv4/IPv6, TCP/UDP, ICMP/ICMPv6, Ethernet ARP mappings. Bounded DNS question/response metadata, HTTP method/status and TLS record metadata.
+- Nine independently configurable heuristic detection categories with exact frame evidence, flows, statistical indicators, confidence, impact, benign explanations, limitations and investigation steps.
+- One continuous page: compact **Basic details** first (unique IPs, bidirectional IP-pair communications, protocols, packet count, duration and bytes), followed immediately by **Suspicious activity**. A communication counts an IP pair once across ports and protocols.
+- Findings include exact evidence frame numbers for reviewing the original capture in Wireshark. No in-app packet explorer or packet filters.
+- Severity/confidence/category/address filtering, analyst statuses, source/time-based incident groupings, priority findings and comparison against the previous capture.
+- JSON/CSV exports and browser printing (save PDF), with identifier pseudonymization enabled by default.
+- Eleven synthetic lab scenarios (including a four-activity demo) generated offline and analyzed through the real engine.
+- Signature/extension validation, 10 MB upload / 50,000 packet defaults, one analysis at a time, 45-second disposable-worker timeout, global 20-uploads/minute rate limit, expiring bearer-protected reports, bounded request body and closed upload spools.
 
-The internal Python package is still named `netsentry`, so the startup commands use `netsentry.main:app`.
+## Suggested workflow
 
-## Technology and structure
+1. Under **Upload or change capture**, upload a capture or expand **Try a sample capture**.
+2. Review coverage and priority findings under **Suspicious activity**. No alerts does **not** guarantee safety.
+3. Expand a **Suspicious activity** finding, read its evidence and alternatives, and review referenced frames in Wireshark if needed.
+4. Review severity, confidence, source/destination addresses and investigation steps. Analyst statuses are browser-memory only.
+5. Review pseudonymized **Reports**, download JSON/CSV or print to PDF.
+6. Change **Detection settings**, then analyze again. Settings never retroactively change existing results. Trusted hosts/scanners/domains annotate findings rather than hiding them.
 
-- **Backend:** Python, FastAPI, Uvicorn
-- **Frontend:** HTML, CSS, JavaScript
-- **Capture parser:** Python standard library
-
-```text
-NetBrief/
-├── netsentry/
-│   ├── main.py          # API and dashboard delivery
-│   └── parser.py        # Capture parsing, statistics, scan heuristic
-├── static/index.html   # Dashboard and packet explorer
-├── samples/            # Synthetic capture and generator
-├── tests/test_app.py   # Parser and API tests
-├── requirements.txt
-└── start_windows.bat
-```
-
-## Tests and API
-
-With the virtual environment created, run these commands on Windows:
+## Tests
 
 ```powershell
-.venv\Scripts\python.exe -m pip install pytest httpx
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .venv\Scripts\python.exe -m pytest -q
+node tests/test_filters.cjs
+node tests/test_reporting.cjs
+.venv\Scripts\python.exe -m pip_audit -r requirements.lock
 ```
 
-On Linux/macOS, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
+See [VALIDATION.md](VALIDATION.md) for verified results and [DETECTION_RULES.md](DETECTION_RULES.md) for thresholds and limitations. Synthetic tests validate implementation behavior, not production detection accuracy.
 
-Interactive API documentation is available at **http://127.0.0.1:8000/api/docs** while the server is running.
+## Structure
 
-## Current limitations
+```text
+netsentry/
+  main.py              API, access tokens, limits and retention
+  worker.py            Disposable analysis process
+  parser.py            PCAP/PCAPNG and network-layer decoder
+  metadata.py          Bounded application metadata
+  connections.py       Original TCP handshake/data/close evidence
+  config.py            Validated per-analysis policy
+  investigation.py     Hosts, flows and evidence correlation
+  detectors/
+    __init__.py        Evidence envelope and coverage
+    rules.py           Nine independent detector functions
+static/
+  index.html           Single-page summary and findings shell
+  app.js, overview.js  Upload handling and IP-pair summary
+  soc.js, soc.css      Investigation views and design system
+  reporting.js         Shared redaction and CSV export helpers
+samples/               Existing captures and offline lab generator
+tests/                 Parser, rule, API and filter regression tests
+```
 
-- This version is intended for **local use**. Keep it bound to `127.0.0.1`; it has no authentication or request throttling.
-- Parsing covers basic metadata and common capture formats. It does not provide full Wireshark decoding, payload inspection, TCP reassembly, or live capture.
-- DNS recognition is based on UDP port 53; DNS queries are not decoded.
-- SYN scan detection is experimental. It checks for 15 or more distinct destination ports per source/destination pair over the pair's full observed interval of up to 60 seconds, or without a time check if timestamps are missing. It does not use a rolling window and can miss scan bursts.
-- Indicators require investigation: they do not prove an attack or successful compromise. No indicators does not mean a capture is safe.
-- Processing is limited to **300,000 packets**. Reports include at most 500 packet rows, 500 populated timeline buckets, and 100 indicators.
-- NetBrief does not maintain a capture history, but uploads may use temporary disk storage. Exported reports can contain sensitive network metadata.
+## Scope and remaining work
 
-## Next steps
+This is a **local demonstration release, not a production IDS**. See [SECURITY.md](SECURITY.md), [ARCHITECTURE.md](ARCHITECTURE.md), [API.md](API.md), [DEPLOYMENT.md](DEPLOYMENT.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [samples/README.md](samples/README.md).
 
-Planned improvements include stronger capture validation, resource controls, reliable scan time windows, findings with packet evidence, conversation analysis, and CSV export. These features are not yet implemented.
+Not implemented: TCP/application reassembly, TLS SNI/certificates/decryption, full DNS answer decoding, raw hex retention, trained baselines, rolling-window detections, persisted analyst cases, live job-progress percentages, independent capture comparison storage, external threat intelligence or production multi-user authentication. The frontend uses the summary response without downloading packet pages; paginated packet metadata remains available through the API. Windows has no enforced worker memory cap. Public deployment still requires operational hardening and owner approval.
 
-Analyze only traffic you own or have permission to inspect.
+No software license was added; the owner must choose one before presenting this as a licensed open-source release.

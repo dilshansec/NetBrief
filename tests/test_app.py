@@ -14,8 +14,8 @@ def test_demo_analysis():
     result=analyze(data,'demo_scan.pcap')
     assert result['summary']['packets']==25
     assert result['protocols']['TCP']==25
-    assert len(result['alerts'])==1
-    assert '25 unique' in result['alerts'][0]['evidence']
+    assert any(a['category']=='port_scan' for a in result['alerts'])
+    assert len(result['connections'])==25
 
 def test_upload():
     data=(ROOT/'samples'/'demo_scan.pcap').read_bytes()
@@ -28,4 +28,4 @@ def test_invalid():
     assert res.status_code==400
 
 def test_index():
-    assert 'NetBrief' in client.get('/').text
+    assert 'NetSentry' in client.get('/').text
