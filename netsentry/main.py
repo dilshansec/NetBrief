@@ -74,7 +74,7 @@ async def guard(request:Request,call_next):
 def home():return FileResponse(ROOT/'static'/'index.html')
 
 @app.get('/api/docs',include_in_schema=False)
-def api_docs():return FileResponse(ROOT/'API.md',media_type='text/plain; charset=utf-8')
+def api_docs():return app.openapi()
 
 @app.get('/api/health')
 def health():return {'status':'ok','version':'0.3.0'}
@@ -146,7 +146,10 @@ def evidence(identifier:str,alert_id:str,authorization:str|None=Header(None)):
 
 @app.get('/sample')
 @app.get('/sample/conversation')
-def conversation_sample():return FileResponse(ROOT/'samples'/'demo_conversation.pcap',media_type='application/vnd.tcpdump.pcap')
+def conversation_sample():
+    from samples.make_conversation import capture
+    from fastapi.responses import Response
+    return Response(capture(),media_type='application/vnd.tcpdump.pcap')
 
 @app.get('/api/samples')
 def samples():
